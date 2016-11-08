@@ -36,7 +36,7 @@ NODE_CONTAINER_FILES=$(shell find $(NODE_CONTAINER_DIR)/filesystem -type f)
 NODE_CONTAINER_BUILD_ARGS?=
 NODE_CONTAINER_CREATED=$(NODE_CONTAINER_DIR)/.calico_node.created
 NODE_CONTAINER_BIN_DIR=$(NODE_CONTAINER_DIR)/filesystem/bin
-NODE_CONTAINER_BINARIES=startup allocate-ipip-addr calico-felix bird calico-bgp-daemon confd libnetwork-plugin
+NODE_CONTAINER_BINARIES=startup allocate-ipip-addr calico-felix bird calico-bgp-daemon gobgp confd libnetwork-plugin
 FELIX_CONTAINER_NAME?=calico/felix:2.0.0-beta.3
 LIBNETWORK_PLUGIN_CONTAINER_NAME?=calico/libnetwork-plugin:v1.0.0-beta
 
@@ -87,6 +87,11 @@ $(NODE_CONTAINER_BIN_DIR)/confd:
 # Get the calico-bgp-daemon binary
 $(NODE_CONTAINER_BIN_DIR)/calico-bgp-daemon:
 	curl -L $(CALICO_BGP_DAEMON_URL) -o $@
+	chmod +x $@
+
+# Get the GoBGP CLI binary
+$(NODE_CONTAINER_BIN_DIR)/gobgp:
+	curl -L $(GOBGP_URL) -o $@
 	chmod +x $@
 
 # Get bird binaries

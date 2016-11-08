@@ -25,6 +25,7 @@ import (
 	"github.com/docopt/docopt-go"
 	gops "github.com/mitchellh/go-ps"
 	"github.com/olekukonko/tablewriter"
+	"github.com/projectcalico/calico-containers/calicoctl/commands/argutils"
 )
 
 // Check for Word_<IP> where every octate is seperated by "_", regardless of IP protocols
@@ -38,6 +39,12 @@ func Status(args []string) {
 
 Options:
   -h --help                 Show this screen.
+     --backend=(bird|gobgp|none)
+                           Specify which networking backend to use.  When set
+                           to "none", Calico node runs in policy only mode.
+                           The option to run with gobgp is currently
+                           experimental.
+                           [default: bird]
 
 Description:
   Check the status of the Calico node instance.  This incudes the status and
@@ -56,6 +63,14 @@ Description:
 	// Must run this command as root to be able to connect to BIRD sockets
 	enforceRoot()
 
+	backend := argutils.ArgStringOrBlank(parsedArgs, "--backend")
+
+	backendMatch := regexp.MustCompile("^(none|bird|gobgp)$")
+	if !backendMatch.MatchString(backend) {
+		fmt.Printf("Error executing command: unknown backend '%s'\n", backend)
+		os.Exit(1)
+	}
+
 	// Go through running processes and check if `calico-felix` processes is not running
 	processes, err := gops.Processes()
 	if err != nil {
@@ -68,19 +83,30 @@ Description:
 	}
 
 	fmt.Printf("Calico process is running.\n")
+	switch backend {
+	case "bird":
+		// Check if birdv4 process is running, print the BGP peer table if it is, else print a warning
+		if psContains("bird", processes) {
+			printBGPPeers("4")
+		} else {
+			fmt.Printf("\nINFO: BIRDv4 process: 'bird' is not running.\n")
+		}
 
-	// Check if birdv4 process is running, print the BGP peer table if it is, else print a warning
-	if psContains("bird", processes) {
-		printBGPPeers("4")
-	} else {
-		fmt.Printf("\nINFO: BIRDv4 process: 'bird' is not running.\n")
-	}
+		// Check if birdv6 process is running, print the BGP peer table if it is, else print a warning
+		if psContains("bird6", processes) {
+			printBGPPeers("6")
+		} else {
+			fmt.Printf("\nINFO: BIRDv6 process: 'bird6' is not running.\n")
+		}
 
-	// Check if birdv6 process is running, print the BGP peer table if it is, else print a warning
-	if psContains("bird6", processes) {
-		printBGPPeers("6")
-	} else {
-		fmt.Printf("\nINFO: BIRDv6 process: 'bird6' is not running.\n")
+	case "gobgp":
+		// Check if GoBGP process is running, print the BGP peer table if it is, else print a warning.
+		if psContains("calico-bgp-daemon", processes) {
+			printBGPPeers("4")
+		} else {
+			fmt.Printf("\nINFO: BIRDv4 process: 'bird' is not running.\n")
+		}
+
 	}
 
 	// Have to manually enter an empty line because the table print
