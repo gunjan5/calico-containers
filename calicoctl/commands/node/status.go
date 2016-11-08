@@ -118,6 +118,7 @@ func printBGPPeers(ipv string) {
 			fmt.Printf("Error connecting to BIRDv%s socket: %v", ipv, err)
 			return
 		}
+		fmt.Println("## Connection to BIRD: ", c)
 	}
 	defer c.Close()
 
@@ -135,6 +136,7 @@ func printBGPPeers(ipv string) {
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}
+	fmt.Println("## Bytes read from BIRD: ", n)
 
 	data := [][]string{}
 
@@ -142,10 +144,13 @@ func printBGPPeers(ipv string) {
 	table.SetHeader([]string{"Peer address", "Peer type", "State", "Since", "Info"})
 
 	birdOut := string(buf[:n])
+	fmt.Println("## Raw read from BIRD: ", buf[:n])
+	fmt.Println("## String read from BIRD: ", birdOut)
 
 	for _, line := range strings.Split(birdOut, "\n") {
-
+		fmt.Println("## in loop, line: ", line)
 		ipString := bgpPeerRegex.FindString(line)
+		fmt.Println("## ipString value: ", ipString)
 
 		if ipString != "" {
 			col := []string{}
@@ -172,24 +177,31 @@ func printBGPPeers(ipv string) {
 				col = append(col, ipString)
 				col = append(col, "node-to-node mesh")
 				col = append(col, fields...)
+				fmt.Println("## Mesh type: ", ipString)
+				fmt.Println("## Mesh type col: ", col)
 			} else if strings.HasPrefix(ipString, "Node_") {
 				ipString = ipString[5:]
 				ipString = strings.Replace(ipString, "_", ipSep, -1)
 				col = append(col, ipString)
 				col = append(col, "node specific")
 				col = append(col, fields...)
+				fmt.Println("## Node type: ", ipString)
+				fmt.Println("## Node type col: ", col)
 			} else if strings.HasPrefix(ipString, "Global_") {
 				ipString = ipString[7:]
 				ipString = strings.Replace(ipString, "_", ipSep, -1)
 				col = append(col, ipString)
 				col = append(col, "global")
 				col = append(col, fields...)
+				fmt.Println("## Global type: ", ipString)
+				fmt.Println("## Global type col: ", col)
 			} else {
 				// Did not match any of the pre-defined options for BIRD
 				fmt.Println(errors.New("Error: Did not match any of the predefined options for BIRD"))
 				break
 			}
 			data = append(data, col)
+			fmt.Println("## Data: ", data)
 		}
 	}
 
