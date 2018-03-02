@@ -540,6 +540,16 @@ class TestCalicoctlCommands(TestBase):
         rev2 = rc.decoded
         self.assertNotEqual(rev1['metadata']['resourceVersion'], rev2['metadata']['resourceVersion'])
 
+        # Apply an update to the felix configuration with a large duration.
+        rc = calicoctl("apply", data=felixconfig_name1_rev3)
+        rc.assert_no_error()
+        rc = calicoctl(
+            "get felixconfig %s -o yaml" % name(felixconfig_name1_rev3))
+        rc.assert_no_error()
+        rev3 = rc.decoded
+        self.assertEqual(rev3['spec']['netlinkTimeout'], '2m5s')
+        self.assertEqual(rev3['spec']['reportingTTL'], '2h45m10s')
+
         # Delete the resource by name (i.e. without using a resource version).
         rc = calicoctl("delete felixconfig %s" % name(rev2))
         rc.assert_no_error()
@@ -706,29 +716,26 @@ class TestCalicoctlCommands(TestBase):
         rc = calicoctl("delete networkpolicy %s" % name(rev3))
         rc.assert_no_error()
 
-        def test_get(self):
-            """
-            Test that we disallow CRUD on a knp.default prefixed NetworkPolicy.
-            """
-            k8s_np = copy.deepcopy(networkpolicy_name1_rev1)
-            k8s_np['metadata']['name'] = 'knp.default.foobarfizz'
+    def test_disallow_crud_on_knp_defaults(self):
+        """
+        Test that we disallow CRUD on a knp.default prefixed NetworkPolicy.
+        """
+        k8s_np = copy.deepcopy(networkpolicy_name1_rev1)
+        k8s_np['metadata']['name'] = 'knp.default.foobarfizz'
 
-            rc = calicoctl("create", data=k8s_np)
-            rc.assert_error(text=NOT_SUPPORTED)
-            rc.assert_error(text=KUBERNETES_NP)
+        rc = calicoctl("create", data=k8s_np)
+        rc.assert_error(text=NOT_SUPPORTED)
+        rc.assert_error(text=KUBERNETES_NP)
 
-            rc = calicoctl("apply", data=k8s_np)
-            rc.assert_error(text=NOT_SUPPORTED)
-            rc.assert_error(text=KUBERNETES_NP)
+        rc = calicoctl("apply", data=k8s_np)
+        rc.assert_error(text=NOT_FOUND)
 
-            rc = calicoctl("replace", data=k8s_np)
-            rc.assert_error(text=NOT_SUPPORTED)
-            rc.assert_error(text=KUBERNETES_NP)
+        rc = calicoctl("replace", data=k8s_np)
+        rc.assert_error(text=NOT_FOUND)
 
-            rc = calicoctl("delete", data=k8s_np)
-            rc.assert_error(text=NOT_SUPPORTED)
-            rc.assert_error(text=KUBERNETES_NP)
-
+        rc = calicoctl("delete", data=k8s_np)
+        rc.assert_error(text=NOT_SUPPORTED)
+        rc.assert_error(text=KUBERNETES_NP)
 #
 #
 # class TestCreateFromFile(TestBase):
